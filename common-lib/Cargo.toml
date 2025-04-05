@@ -1,7 +1,37 @@
 [package]
-name = "host-tests"
+name = "common-lib"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.83"
+rust-version = "1.84"
 
 [dependencies]
+# embassy-executor = {version = "0.7", features = ["arch-std", "executor-thread"] }
+# embassy-time = { version = "0.4", features = ["std", "generic-queue-128"] }
+# embassy-sync = { version = "0.6.2", features = [] }
+embedded-hal = { version = "1.0" , features = []}
+phf = { version = "0.11", default-features = false, features = ["macros"] }
+futures-util = { version= "0.3.31", default-features = false}
+thiserror = { version = "2.0", default-features = false }
+embassy-nrf = { version = "0.3.1", features = ["nrf52833"] }
+heapless = "0.8"
+defmt = "0.3"
+
+[target.'cfg(target_arch = "arm")'.dependencies]
+embassy-executor = { version = "0.7.0", features = [ "arch-cortex-m", "defmt", "executor-thread"] }
+embassy-sync = { version = "0.6.2", features = ["defmt"] }
+embassy-time = { version = "0.4.0", features = ["defmt", "defmt-timestamp-uptime"] }
+embassy-futures = { version = "0.1.1", features = ["defmt"] }
+
+[target.'cfg(not(target_arch = "arm"))'.dependencies]
+embassy-executor = {version = "0.7", features = ["arch-std", "executor-thread"] }
+embassy-time = { version = "0.4", features = ["std", "generic-queue-128"] }
+embassy-sync = { version = "0.6.2", features = [] }
+embassy-futures = { version = "0.1.1", features = [] }
+log = "0.4"
+pretty_env_logger = "0.4"
+
+
+[dev-dependencies]
+futures-test = { version = "0.3", default-features = false, features = ["std"] }
+mockall = "0.13"
+ctor = "0.4"

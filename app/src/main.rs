@@ -12,6 +12,9 @@ use embassy_nrf::{bind_interrupts, peripherals, uarte};
 use embassy_time::{Duration, Timer};
 use panic_probe as _;
 
+static VAR: i32 = 5;
+static VAR: i32 = 5;
+
 assign_resources! {
     matrix_pins: LedMatrixPins {
         col1: P0_28,

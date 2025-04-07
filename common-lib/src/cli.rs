@@ -1,7 +1,5 @@
 use core::str::FromStr;
 
-use crate::transport::Transport;
-
 use heapless::String;
 use heapless::Vec;
 

@@ -1,6 +1,5 @@
 use core::str;
 use heapless::String;
-use thiserror::Error;
 
 use crate::uarte::{UarteRx, UarteRxError};
 

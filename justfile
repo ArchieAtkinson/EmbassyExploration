@@ -1,27 +1,29 @@
+TARGET := "thumbv7em-none-eabihf"
+TARGET_DIR := "target/mcu"
+HOST_DIR := "target/host"
+
 # Flash App
-[working-directory: 'app']
-@run:
-    cargo run
+[working-directory: "app"]
+@flash *ARGS:
+    cargo run --target-dir={{TARGET_DIR}} {{ARGS}}
 
-[working-directory: 'app']
-@check_app:
+@check *ARGS:
     echo "\n ------------- App Output ------------- \n"
-    cargo check
-
+    cargo check --target {{TARGET}} --target-dir={{TARGET_DIR}} {{ARGS}}
 
 
 # Host Test
-[working-directory: 'common-lib']
-@htest *ARGS: check_app
-    echo "\n ------------- Test Output ------------- \n"
-    RUST_LOG=debug cargo test {{ARGS}} 
+@htest *ARGS: hcheck
+    RUST_LOG=debug cargo test -p common-lib --target-dir={{HOST_DIR}} {{ARGS}}
+
+
+@hcheck:
+    cargo check -p common-lib --target {{TARGET}} --target-dir={{TARGET_DIR}}
 
 # Host Coverage
-[working-directory: 'common-lib']
 @hcov:
-    cargo tarpaulin --lib 
+    cargo tarpaulin -p common-lib --lib 
 
 # Target Test
-[working-directory: 'hw-lib']
-@ttest: check_app
-    cargo test
+@ttest:
+    cargo test -p hw-lib

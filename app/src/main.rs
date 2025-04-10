@@ -2,6 +2,7 @@
 #![no_std]
 
 use assign_resources::assign_resources;
+use common_lib::cli::{RootCommand, Shell};
 use common_lib::matrix::LedMatrix;
 use common_lib::scroller::{ScrollDirection, Scroller, ScrollerError, MATRIX_SIZE};
 use defmt::{info, warn};
@@ -9,11 +10,10 @@ use defmt_rtt as _;
 use embassy_executor::Spawner;
 use embassy_nrf::gpio::{Level, Output, OutputDrive};
 use embassy_nrf::{bind_interrupts, peripherals, uarte};
+use embassy_sync::channel::Channel;
 use embassy_time::{Duration, Timer};
+use heapless::String;
 use panic_probe as _;
-
-static VAR: i32 = 5;
-static VAR: i32 = 5;
 
 assign_resources! {
     matrix_pins: LedMatrixPins {
@@ -55,10 +55,39 @@ async fn main(spawner: Spawner) {
 
     let resources = split_resources!(p);
 
+    static SHELL: Shell = Shell::new();
+
     spawner.spawn(animate(resources.matrix_pins)).unwrap();
     spawner
         .spawn(command_line(resources.uarte_resources))
         .unwrap();
+    spawner.spawn(shell_test_send(&SHELL)).unwrap();
+    spawner.spawn(shell_test_revc(&SHELL)).unwrap();
+}
+
+#[embassy_executor::task]
+async fn shell_test_send(shell: &'static Shell) {
+    loop {
+        let command: String<256> = String::try_from("Hello").unwrap();
+        shell.send(command).await.unwrap();
+        Timer::after(Duration::from_secs(1)).await;
+    }
+}
+
+#[embassy_executor::task]
+async fn shell_test_revc(shell: &'static Shell) {
+    static ROOT: RootCommand<0> = RootCommand {
+        root: "Hello",
+        sub: [],
+        channel: Channel::new(),
+    };
+
+    let mut receiver = shell.register(&ROOT).await;
+
+    loop {
+        let out = receiver.get().await;
+        info!("{}", out.as_str());
+    }
 }
 
 pub fn init_leds(matrix_pins: LedMatrixPins) -> LedMatrix<Output<'static>, MATRIX_SIZE> {

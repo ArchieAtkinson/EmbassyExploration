@@ -1,16 +1,16 @@
+use crate::prelude::*;
+use crate::uarte::{UarteRx, UarteRxError};
 use core::str;
 use heapless::String;
-
-use crate::uarte::{UarteRx, UarteRxError};
 
 pub trait Transport {
     type Error;
     async fn next_line(&mut self) -> Result<Option<String<MAX_LINE_LEN>>, Self::Error>;
 }
 
-pub static MAX_LINE_LEN: usize = 80;
+pub static MAX_LINE_LEN: usize = 256;
 
-struct UartTransport<T: UarteRx> {
+pub struct UartTransport<T: UarteRx> {
     buf: String<256>,
     rx: T,
 }
@@ -33,12 +33,14 @@ impl<T: UarteRx> Transport for UartTransport<T> {
 
         let input_string = str::from_utf8(&input_buffer[0..size]).unwrap();
 
+        info!("{:?}", self.buf.as_str());
+
         self.buf.push_str(input_string).unwrap();
 
-        let newline_loc = self.buf.find("\n");
+        let newline_loc = self.buf.find("\r");
         if let Some(loc) = newline_loc {
             let mut output = String::new();
-            output.push_str(&self.buf.as_str()[0..loc + 1]).unwrap();
+            output.push_str(&self.buf.as_str()[0..loc]).unwrap();
 
             let mut tmp = String::new();
             let buf_size = self.buf.len();
@@ -61,7 +63,7 @@ mod test {
     async fn test_next_line_with_provided_line() {
         let mut mock = MockUarteRx::new();
 
-        let test_string = "Test\n";
+        let test_string = "Test\r";
         mock.expect_read_until_idle().returning(|buf| {
             buf[..test_string.len()].copy_from_slice(test_string.as_bytes());
             Ok(test_string.len())
@@ -70,7 +72,7 @@ mod test {
         let mut transport = UartTransport::new(mock);
         let output_string = transport.next_line().await.unwrap().unwrap();
 
-        assert_eq!(test_string, output_string.as_str());
+        assert_eq!(test_string.trim_end(), output_string.as_str());
     }
 
     #[futures_test::test]
@@ -78,7 +80,7 @@ mod test {
         let mut mock = MockUarteRx::new();
 
         let test_string_1 = "Tes";
-        let test_string_2 = "t\n";
+        let test_string_2 = "t\r";
         mock.expect_read_until_idle().times(1).returning(|buf| {
             buf[..test_string_1.len()].copy_from_slice(test_string_1.as_bytes());
             Ok(test_string_1.len())
@@ -95,14 +97,14 @@ mod test {
 
         let output_string = transport.next_line().await.unwrap().unwrap();
         let expected_string = test_string_1.to_owned() + test_string_2;
-        assert_eq!(expected_string, output_string.as_str());
+        assert_eq!(expected_string.trim(), output_string.as_str());
     }
 
     #[futures_test::test]
     async fn test_next_line_with_two_lines() {
         let mut mock = MockUarteRx::new();
 
-        let test_string = "Test\nString\n";
+        let test_string = "Test\rString\r";
         mock.expect_read_until_idle().times(1).returning(|buf| {
             buf[..test_string.len()].copy_from_slice(test_string.as_bytes());
             Ok(test_string.len())
@@ -113,11 +115,11 @@ mod test {
         let mut transport = UartTransport::new(mock);
 
         let output_string = transport.next_line().await.unwrap().unwrap();
-        let expected_string = "Test\n";
+        let expected_string = "Test";
         assert_eq!(expected_string, output_string.as_str());
 
         let output_string = transport.next_line().await.unwrap().unwrap();
-        let expected_string = "String\n";
+        let expected_string = "String";
         assert_eq!(expected_string, output_string.as_str());
     }
 }

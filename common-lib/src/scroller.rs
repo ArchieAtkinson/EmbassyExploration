@@ -72,7 +72,7 @@ where
 
     pub async fn display_string(
         &mut self,
-        string: &'static str,
+        string: &str,
         direction: ScrollDirection,
         frame_time: Duration,
     ) -> Result<(), ScrollerError> {
